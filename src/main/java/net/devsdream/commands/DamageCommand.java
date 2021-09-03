@@ -1,366 +1,206 @@
 package net.devsdream.commands;
 
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
-
-import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.google.common.collect.Lists;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.mojang.brigadier.tree.LiteralCommandNode;
 
-import java.util.Collection;
-import java.util.List;
-
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.*;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.EntityDamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 
 public class DamageCommand {
+
+                private static Map<String, Boolean> damageOptions = mapDamageOptions();
+                private static Map<String, Boolean> pierceOptions = mapPierceOptions();
+                private static List<Object> sourceEntityThings = makeSourceEntityThings();
+
+        static Map<String, Boolean> mapDamageOptions() {
+                Map<String, Boolean> map = new HashMap<String, Boolean>();
+                map.put("fire", false);
+                map.put("magic", false);
+                map.put("explosion", false);
+                map.put("projectile", false);
+                map.put("aggroless", false);
+                map.put("headhurt", false);
+                map.put("scaled", false);
+                map.put("fall", false);
+                return map;
+        }
+        static Map<String, Boolean> mapPierceOptions() {
+                Map<String, Boolean> map = new HashMap<String, Boolean>();
+                map.put("armor", false);
+                map.put("invulnerability", false);
+                map.put("magic", false);
+                return map;
+        }
+
+        static List<Object> makeSourceEntityThings() {
+                List<Object> list = new ArrayList<Object>();
+                list.add(null);
+                list.add(false);
+                return list;
+        }
+
+
         private static final SimpleCommandExceptionType DAMAGE_FAILED_EXCEPTION = new SimpleCommandExceptionType(
                         new TranslatableComponent("commands.devsdream.damage.failed"));
 
         public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-                dispatcher.register(Commands.literal("damage").requires((user) -> {
-                        return user.hasPermission(2);
-                }).then(Commands.argument("targets", EntityArgument.entities()).then(Commands
+
+                
+
+                LiteralArgumentBuilder<CommandSourceStack> builder = Commands.literal("damage").requires((source) -> {
+                        return source.hasPermission(2);
+                });
+                builder.then(Commands.literal("run").then(Commands.argument("targets", EntityArgument.entities()).then(Commands
                                 .argument("amount", FloatArgumentType.floatArg(0))
-                                .then(Commands.argument("sourceString", StringArgumentType.string())
-                                                                .then(Commands.argument("isFire",
-                                                                                BoolArgumentType.bool())
-                                                                                .executes((damage) -> {
-                                                                                        return damageEntity(damage
-                                                                                                        .getSource(),
-                                                                                                        EntityArgument.getEntities(
-                                                                                                                        damage,
-                                                                                                                        "targets"),
-                                                                                                        setDamageProperties(
-                                                                                                                        StringArgumentType
-                                                                                                                                        .getString(damage,
-                                                                                                                                                        "sourceString"),
-                                                                                                                        BoolArgumentType.getBool(
-                                                                                                                                        damage,
-                                                                                                                                        "isFire"),
-                                                                                                                        false, false, false, false, false, false, false, false, false, false, null, false),
-                                                                                                        FloatArgumentType
-                                                                                                                        .getFloat(damage,
-                                                                                                                                        "amount"));
-                                                                                })
-                                                                                .then(Commands.argument("pierceArmor",
-                                                                                                BoolArgumentType.bool())
-                                                                                                .executes((damage) -> {
-                                                                                                        return damageEntity(
-                                                                                                                        damage.getSource(),
-                                                                                                                        EntityArgument.getEntities(
-                                                                                                                                        damage,
-                                                                                                                                        "targets"),
-                                                                                                                        setDamageProperties(
-                                                                                                                                StringArgumentType
-                                                                                                                                                .getString(damage,
-                                                                                                                                                                "sourceString"),
-                                                                                                                                BoolArgumentType.getBool(
-                                                                                                                                                damage,
-                                                                                                                                                "isFire"),
-                                                                                                                                BoolArgumentType.getBool(damage, "pierceArmor"), false, false, false, false, false, false, false, false, false, null, false),
-                                                                                                                        FloatArgumentType
-                                                                                                                                        .getFloat(damage,
-                                                                                                                                                        "amount"));
-                                                                                                }).then(Commands.argument(
-                                                                                                                                "isMagic",
-                                                                                                                                BoolArgumentType.bool())
-                                                                                                                                .executes((damage) -> {
-                                                                                                                                        return damageEntity(
-                                                                                                                                                        damage.getSource(),
-                                                                                                                                                        EntityArgument.getEntities(
-                                                                                                                                                                        damage,
-                                                                                                                                                                        "targets"),
-                                                                                                                                                        setDamageProperties(
-                                                                                                                                                                StringArgumentType
-                                                                                                                                                                                .getString(damage,
-                                                                                                                                                                                                "sourceString"),
-                                                                                                                                                                BoolArgumentType.getBool(
-                                                                                                                                                                                damage,
-                                                                                                                                                                                "isFire"),
-                                                                                                                                                                BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), false, false, false, false, false, false, false, false, null, false),
-                                                                                                                                                        FloatArgumentType
-                                                                                                                                                                        .getFloat(damage,
-                                                                                                                                                                                        "amount"));
-                                                                                                                                })
-                                                                                                                                .then(Commands.argument(
-                                                                                                                                                "bypassInvulnerability",
-                                                                                                                                                BoolArgumentType.bool())
-                                                                                                                                                .executes((damage) -> {
-                                                                                                                                                        return damageEntity(
-                                                                                                                                                                        damage.getSource(),
-                                                                                                                                                                        EntityArgument.getEntities(
-                                                                                                                                                                                        damage,
-                                                                                                                                                                                        "targets"),
-                                                                                                                                                                        setDamageProperties(
-                                                                                                                                                                                StringArgumentType
-                                                                                                                                                                                                .getString(damage,
-                                                                                                                                                                                                                "sourceString"),
-                                                                                                                                                                                BoolArgumentType.getBool(
-                                                                                                                                                                                                damage,
-                                                                                                                                                                                                "isFire"),
-                                                                                                                                                                                BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), false, false, false, false, false, false, false, null, false),
-                                                                                                                                                                        FloatArgumentType
-                                                                                                                                                                                        .getFloat(damage,
-                                                                                                                                                                                                        "amount"));
-                                                                                                                                                })
-                                                                                                                                                .then(Commands.argument(
-                                                                                                                                                                "isExplosion",
-                                                                                                                                                                BoolArgumentType.bool())
-                                                                                                                                                                .executes((damage) -> {
-                                                                                                                                                                        return damageEntity(
-                                                                                                                                                                                        damage.getSource(),
-                                                                                                                                                                                        EntityArgument.getEntities(
-                                                                                                                                                                                                        damage,
-                                                                                                                                                                                                        "targets"),
-                                                                                                                                                                                        setDamageProperties(
-                                                                                                                                                                                                StringArgumentType
-                                                                                                                                                                                                                .getString(damage,
-                                                                                                                                                                                                                                "sourceString"),
-                                                                                                                                                                                                BoolArgumentType.getBool(
-                                                                                                                                                                                                                damage,
-                                                                                                                                                                                                                "isFire"),
-                                                                                                                                                                                                BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), BoolArgumentType.getBool(damage, "isExplosion"), false, false, false, false, false, false, null, false),
-                                                                                                                                                                                        FloatArgumentType
-                                                                                                                                                                                                        .getFloat(damage,
-                                                                                                                                                                                                                        "amount"));
-                                                                                                                                                                })
-                                                                                                                                                                .then(Commands.argument(
-                                                                                                                                                                                "isProjectile",
-                                                                                                                                                                                BoolArgumentType.bool())
-                                                                                                                                                                                .executes((damage) -> {
-                                                                                                                                                                                        return damageEntity(
-                                                                                                                                                                                                        damage.getSource(),
-                                                                                                                                                                                                        EntityArgument.getEntities(
-                                                                                                                                                                                                                        damage,
-                                                                                                                                                                                                                        "targets"),
-                                                                                                                                                                                                        setDamageProperties(
-                                                                                                                                                                                                                StringArgumentType
-                                                                                                                                                                                                                                .getString(damage,
-                                                                                                                                                                                                                                                "sourceString"),
-                                                                                                                                                                                                                BoolArgumentType.getBool(
-                                                                                                                                                                                                                                damage,
-                                                                                                                                                                                                                                "isFire"),
-                                                                                                                                                                                                                BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), BoolArgumentType.getBool(damage, "isExplosion"), BoolArgumentType.getBool(damage, "isProjectile"), false, false, false, false, false, null, false),
-                                                                                                                                                                                                        FloatArgumentType
-                                                                                                                                                                                                                        .getFloat(damage,
-                                                                                                                                                                                                                                        "amount"));
-                                                                                                                                                                                })
-                                                                                                                                                                                .then(Commands.argument(
-                                                                                                                                                                                                "damageHelmet",
-                                                                                                                                                                                                BoolArgumentType.bool())
-                                                                                                                                                                                                .executes((damage) -> {
-                                                                                                                                                                                                        return damageEntity(
-                                                                                                                                                                                                                        damage.getSource(),
-                                                                                                                                                                                                                        EntityArgument.getEntities(
-                                                                                                                                                                                                                                        damage,
-                                                                                                                                                                                                                                        "targets"),
-                                                                                                                                                                                                                        setDamageProperties(
-                                                                                                                                                                                                                                StringArgumentType
-                                                                                                                                                                                                                                                .getString(damage,
-                                                                                                                                                                                                                                                                "sourceString"),
-                                                                                                                                                                                                                                BoolArgumentType.getBool(
-                                                                                                                                                                                                                                                damage,
-                                                                                                                                                                                                                                                "isFire"),
-                                                                                                                                                                                                                                BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), BoolArgumentType.getBool(damage, "isExplosion"), BoolArgumentType.getBool(damage, "isProjectile"), BoolArgumentType.getBool(damage, "damageHelmet"), false, false, false, false, null, false),
-                                                                                                                                                                                                                        FloatArgumentType
-                                                                                                                                                                                                                                        .getFloat(damage,
-                                                                                                                                                                                                                                                        "amount"));
-                                                                                                                                                                                                })
-                                                                                                                                                                                                .then(Commands.argument(
-                                                                                                                                                                                                                "aggro",
-                                                                                                                                                                                                                BoolArgumentType.bool())
-                                                                                                                                                                                                                .executes((damage) -> {
-                                                                                                                                                                                                                        return damageEntity(
-                                                                                                                                                                                                                                        damage.getSource(),
-                                                                                                                                                                                                                                        EntityArgument.getEntities(
-                                                                                                                                                                                                                                                        damage,
-                                                                                                                                                                                                                                                        "targets"),
-                                                                                                                                                                                                                                        setDamageProperties(
-                                                                                                                                                                                                                                                StringArgumentType
-                                                                                                                                                                                                                                                                .getString(damage,
-                                                                                                                                                                                                                                                                                "sourceString"),
-                                                                                                                                                                                                                                                BoolArgumentType.getBool(
-                                                                                                                                                                                                                                                                damage,
-                                                                                                                                                                                                                                                                "isFire"),
-                                                                                                                                                                                                                                                BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), BoolArgumentType.getBool(damage, "isExplosion"), BoolArgumentType.getBool(damage, "isProjectile"), BoolArgumentType.getBool(damage, "damageHelmet"), BoolArgumentType.getBool(damage, "aggro"), false, false, false, null, false),
-                                                                                                                                                                                                                                        FloatArgumentType
-                                                                                                                                                                                                                                                        .getFloat(damage,
-                                                                                                                                                                                                                                                                        "amount"));
-                                                                                                                                                                                                                }).then(Commands.argument(
-                                                                                                                                                                                                                        "bypassMagic",
-                                                                                                                                                                                                                        BoolArgumentType.bool())
-                                                                                                                                                                                                                        .executes((damage) -> {
-                                                                                                                                                                                                                                return damageEntity(
-                                                                                                                                                                                                                                                damage.getSource(),
-                                                                                                                                                                                                                                                EntityArgument.getEntities(
-                                                                                                                                                                                                                                                                damage,
-                                                                                                                                                                                                                                                                "targets"),
-                                                                                                                                                                                                                                                setDamageProperties(
-                                                                                                                                                                                                                                                        StringArgumentType
-                                                                                                                                                                                                                                                                        .getString(damage,
-                                                                                                                                                                                                                                                                                        "sourceString"),
-                                                                                                                                                                                                                                                        BoolArgumentType.getBool(
-                                                                                                                                                                                                                                                                        damage,
-                                                                                                                                                                                                                                                                        "isFire"),
-                                                                                                                                                                                                                                                        BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), BoolArgumentType.getBool(damage, "isExplosion"), BoolArgumentType.getBool(damage, "isProjectile"), BoolArgumentType.getBool(damage, "damageHelmet"), BoolArgumentType.getBool(damage, "aggro"), BoolArgumentType.getBool(damage, "bypassMagic"), false, false, null, false),
-                                                                                                                                                                                                                                                FloatArgumentType
-                                                                                                                                                                                                                                                                .getFloat(damage,
-                                                                                                                                                                                                                                                                                "amount"));
-                                                                                                                                                                                                                        }).then(Commands.argument(
-                                                                                                                                                                                                                                "fromFalling",
-                                                                                                                                                                                                                                BoolArgumentType.bool())
-                                                                                                                                                                                                                                .executes((damage) -> {
-                                                                                                                                                                                                                                        return damageEntity(
-                                                                                                                                                                                                                                                        damage.getSource(),
-                                                                                                                                                                                                                                                        EntityArgument.getEntities(
-                                                                                                                                                                                                                                                                        damage,
-                                                                                                                                                                                                                                                                        "targets"),
-                                                                                                                                                                                                                                                        setDamageProperties(
-                                                                                                                                                                                                                                                                StringArgumentType
-                                                                                                                                                                                                                                                                                .getString(damage,
-                                                                                                                                                                                                                                                                                                "sourceString"),
-                                                                                                                                                                                                                                                                BoolArgumentType.getBool(
-                                                                                                                                                                                                                                                                                damage,
-                                                                                                                                                                                                                                                                                "isFire"),
-                                                                                                                                                                                                                                                                BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), BoolArgumentType.getBool(damage, "isExplosion"), BoolArgumentType.getBool(damage, "isProjectile"), BoolArgumentType.getBool(damage, "damageHelmet"), BoolArgumentType.getBool(damage, "aggro"), BoolArgumentType.getBool(damage, "bypassMagic"), BoolArgumentType.getBool(damage, "fromFalling"), false, null, false),
-                                                                                                                                                                                                                                                        FloatArgumentType
-                                                                                                                                                                                                                                                                        .getFloat(damage,
-                                                                                                                                                                                                                                                                                        "amount"));
-                                                                                                                                                                                                                                }).then(Commands.argument(
-                                                                                                                                                                                                                                        "difficultyScaled",
-                                                                                                                                                                                                                                        BoolArgumentType.bool())
-                                                                                                                                                                                                                                        .executes((damage) -> {
-                                                                                                                                                                                                                                                return damageEntity(
-                                                                                                                                                                                                                                                                damage.getSource(),
-                                                                                                                                                                                                                                                                EntityArgument.getEntities(
-                                                                                                                                                                                                                                                                                damage,
-                                                                                                                                                                                                                                                                                "targets"),
-                                                                                                                                                                                                                                                                setDamageProperties(
-                                                                                                                                                                                                                                                                        StringArgumentType
-                                                                                                                                                                                                                                                                                        .getString(damage,
-                                                                                                                                                                                                                                                                                                        "sourceString"),
-                                                                                                                                                                                                                                                                        BoolArgumentType.getBool(
-                                                                                                                                                                                                                                                                                        damage,
-                                                                                                                                                                                                                                                                                        "isFire"),
-                                                                                                                                                                                                                                                                        BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), BoolArgumentType.getBool(damage, "isExplosion"), BoolArgumentType.getBool(damage, "isProjectile"), BoolArgumentType.getBool(damage, "damageHelmet"), BoolArgumentType.getBool(damage, "aggro"), BoolArgumentType.getBool(damage, "bypassMagic"), BoolArgumentType.getBool(damage, "fromFalling"), BoolArgumentType.getBool(damage, "difficultyScaled"), null, false),
-                                                                                                                                                                                                                                                                FloatArgumentType
-                                                                                                                                                                                                                                                                                .getFloat(damage,
-                                                                                                                                                                                                                                                                                                "amount"));
-                                                                                                                                                                                                                                        })).then(Commands.argument(
-                                                                                                                                                                                                                                                "sourceEntity",
-                                                                                                                                                                                                                                                BoolArgumentType.bool())
-                                                                                                                                                                                                                                                .executes((damage) -> {
-                                                                                                                                                                                                                                                        return damageEntity(
-                                                                                                                                                                                                                                                                        damage.getSource(),
-                                                                                                                                                                                                                                                                        EntityArgument.getEntities(
-                                                                                                                                                                                                                                                                                        damage,
-                                                                                                                                                                                                                                                                                        "targets"),
-                                                                                                                                                                                                                                                                        setDamageProperties(
-                                                                                                                                                                                                                                                                                StringArgumentType
-                                                                                                                                                                                                                                                                                                .getString(damage,
-                                                                                                                                                                                                                                                                                                                "sourceString"),
-                                                                                                                                                                                                                                                                                BoolArgumentType.getBool(
-                                                                                                                                                                                                                                                                                                damage,
-                                                                                                                                                                                                                                                                                                "isFire"),
-                                                                                                                                                                                                                                                                                BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), BoolArgumentType.getBool(damage, "isExplosion"), BoolArgumentType.getBool(damage, "isProjectile"), BoolArgumentType.getBool(damage, "damageHelmet"), BoolArgumentType.getBool(damage, "aggro"), BoolArgumentType.getBool(damage, "bypassMagic"), BoolArgumentType.getBool(damage, "fromFalling"), false, EntityArgument.getEntity(damage, "sourceEntity"), false),
-                                                                                                                                                                                                                                                                        FloatArgumentType
-                                                                                                                                                                                                                                                                                        .getFloat(damage,
-                                                                                                                                                                                                                                                                                                        "amount"));
-                                                                                                                                                                                                                                                }).then(Commands.argument(
-                                                                                                                                                                                                                                                        "thorns",
-                                                                                                                                                                                                                                                        BoolArgumentType.bool())
-                                                                                                                                                                                                                                                        .executes((damage) -> {
-                                                                                                                                                                                                                                                                return damageEntity(
-                                                                                                                                                                                                                                                                                damage.getSource(),
-                                                                                                                                                                                                                                                                                EntityArgument.getEntities(
-                                                                                                                                                                                                                                                                                                damage,
-                                                                                                                                                                                                                                                                                                "targets"),
-                                                                                                                                                                                                                                                                                setDamageProperties(
-                                                                                                                                                                                                                                                                                        StringArgumentType
-                                                                                                                                                                                                                                                                                                        .getString(damage,
-                                                                                                                                                                                                                                                                                                                        "sourceString"),
-                                                                                                                                                                                                                                                                                        BoolArgumentType.getBool(
-                                                                                                                                                                                                                                                                                                        damage,
-                                                                                                                                                                                                                                                                                                        "isFire"),
-                                                                                                                                                                                                                                                                                        BoolArgumentType.getBool(damage, "pierceArmor"), BoolArgumentType.getBool(damage, "isMagic"), BoolArgumentType.getBool(damage, "bypassInvulnerability"), BoolArgumentType.getBool(damage, "isExplosion"), BoolArgumentType.getBool(damage, "isProjectile"), BoolArgumentType.getBool(damage, "damageHelmet"), BoolArgumentType.getBool(damage, "aggro"), BoolArgumentType.getBool(damage, "bypassMagic"), BoolArgumentType.getBool(damage, "fromFalling"), false, EntityArgument.getEntity(damage, "sourceEntity"), BoolArgumentType.getBool(damage, "thorns")),
-                                                                                                                                                                                                                                                                                FloatArgumentType
-                                                                                                                                                                                                                                                                                                .getFloat(damage,
-                                                                                                                                                                                                                                                                                                                "amount"));
-                                                                                                                                                                                                                                                        })))))))))))))))));
+                                .then(Commands.argument("sourceString", StringArgumentType.string()).executes(context -> {
+                                        DamageSource damage = setDamageProperties(StringArgumentType.getString(context, "sourceString"), damageOptions.get("fire"), pierceOptions.get("armor"), damageOptions.get("magic"), pierceOptions.get("invulnerability"), damageOptions.get("explosion"), damageOptions.get("projectile"), damageOptions.get("headhurt"), !(damageOptions.get("aggroless")), pierceOptions.get("magic"), damageOptions.get("fall"), damageOptions.get("scaled"));
+                                        damageOptions = mapDamageOptions();
+                                        pierceOptions = mapPierceOptions();
+                                        if (sourceEntityThings.get(0) == null) {
+                                                sourceEntityThings = makeSourceEntityThings();
+                                                return damageEntity(context.getSource(), EntityArgument.getEntities(context, "targets"), damage, FloatArgumentType.getFloat(context, "amount"));
+                                        } else {
+                                                EntityDamageSource entityDamage = upgradeToEntitySource((Entity) (sourceEntityThings.get(0)), (boolean) (sourceEntityThings.get(1)), damage);
+                                                sourceEntityThings = makeSourceEntityThings();
+                                                return damageEntity(context.getSource(), EntityArgument.getEntities(context, "targets"), entityDamage, FloatArgumentType.getFloat(context, "amount"));
+                                        }
+                                })))));
+                LiteralCommandNode<CommandSourceStack> node = dispatcher
+                .register(builder);
+                                
+                damageOptions.forEach((string, bool) -> {
+                        builder.then(Commands.literal(string).redirect(node, (context) -> {
+                                damageOptions.put(string, true);
+                                return context.getSource();
+                        }));
+                });
+                LiteralArgumentBuilder<CommandSourceStack> pierce = Commands.literal("pierce");
+                pierceOptions.forEach((string, bool) -> {
+                        pierce.then(Commands.literal(string).redirect(node, (context) -> {
+                                pierceOptions.put(string, true);
+                                return context.getSource();
+                        }));
+                });
+
+                builder.then(pierce);
+
+                builder.then(Commands.literal("from").then(Commands.argument("source", EntityArgument.entity()).then(Commands.argument("thorns", BoolArgumentType.bool()).redirect(node, (context) -> {
+                        sourceEntityThings.set(0, EntityArgument.getEntity(context, "source"));
+                        sourceEntityThings.set(1, BoolArgumentType.getBool(context, "thorns"));
+                        return context.getSource();
+                }))));
+                
+                dispatcher.register(builder);
         }
 
         private static DamageSource setDamageProperties(String sourceString, boolean isFire, boolean pierceArmor, boolean isMagic, boolean bypassInvulnerability, boolean isExplosion,
                         boolean isProjectile, boolean damageHelmet, boolean aggro, boolean pierceMagic, boolean fromFalling, 
-                        boolean difficultyScaled, @Nullable Entity sourceEntity, boolean thorns) {
+                        boolean difficultyScaled) {
 
-                DamageSource damage;
-
-                if (sourceEntity == null) {
-                        damage = new EntityDamageSource(sourceString, sourceEntity);
-                } else {
-                        damage = new DamageSource(sourceString);
-                }
+                DamageSource damage = new DamageSource(sourceString);
                
 
-                if (isFire == true) {
+                if (isFire) {
                         damage.setIsFire();
                 }
 
-                if (pierceArmor == true) {
+                if (pierceArmor) {
                         damage.bypassArmor();
                 }
 
-                if (damageHelmet == true) {
+                if (damageHelmet) {
                         damage.damageHelmet();
                 }
 
-                if (difficultyScaled == true) {
+                if (difficultyScaled) {
                         damage.setScalesWithDifficulty();
                 }
 
-                if (isMagic == true) {
+                if (isMagic) {
                         damage.setMagic();
                 }
 
-                if (bypassInvulnerability == true) {
+                if (bypassInvulnerability) {
                         damage.bypassInvul();
                 }
 
-                if (isExplosion == true) {
+                if (isExplosion) {
                         damage.setExplosion();
                 }
 
-                if (isProjectile == true) {
+                if (isProjectile) {
                         damage.setProjectile();
                 }
 
-                if (pierceMagic == true) {
+                if (pierceMagic) {
                         damage.bypassMagic();
                 }
 
-                if (thorns == true) {
-                        ((EntityDamageSource)damage).setThorns();
-                }
-
-                if (aggro == false) {
+                if (!aggro) {
                         damage.setNoAggro();
                 }
 
-                if (fromFalling == true) {
+                if (fromFalling) {
                         damage.setIsFall();
                 }
 
+                return damage;
+        }
+
+        private static EntityDamageSource upgradeToEntitySource(Entity sourceEntity, boolean thorns, DamageSource base) {
+                EntityDamageSource damage = new EntityDamageSource(base.getMsgId(), sourceEntity);
+                if (thorns) {
+                        damage.setThorns();
+                }
+                if (damage.isFire()) {
+                        damage.setIsFire();
+                }
+                if (damage.isBypassArmor()) {
+                        damage.bypassArmor();
+                }
+                if (damage.isDamageHelmet()) {
+                        damage.damageHelmet();
+                }
+                if (damage.isMagic()) {
+                        damage.setMagic();
+                }
+                if (damage.isBypassInvul()) {
+                        damage.bypassInvul();
+                }
+                if (damage.isExplosion()) {
+                        damage.setExplosion();
+                }
+                if (damage.isProjectile()) {
+                        damage.setProjectile();
+                }
+                if (damage.isBypassMagic()) {
+                        damage.bypassMagic();
+                }
+                if (damage.isNoAggro()) {
+                        damage.setNoAggro();
+                }
+                if (damage.isFall()) {
+                        damage.setIsFall();
+                }
                 return damage;
         }
 

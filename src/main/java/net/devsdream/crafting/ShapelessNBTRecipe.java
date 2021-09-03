@@ -35,9 +35,8 @@ public class ShapelessNBTRecipe extends ShapelessRecipe {
          NonNullList<Ingredient> nonnulllist = itemsFromJson(GsonHelper.getAsJsonArray(p_44291_, "ingredients"));
          if (nonnulllist.isEmpty()) {
             throw new JsonParseException("No ingredients for shapeless recipe");
-         } else if (nonnulllist.size() > ShapedRecipe.MAX_WIDTH * ShapedRecipe.MAX_HEIGHT) {
-            throw new JsonParseException("Too many ingredients for shapeless recipe. The maximum is "
-                  + (ShapedRecipe.MAX_WIDTH * ShapedRecipe.MAX_HEIGHT));
+         } else if (nonnulllist.size() > 9) {
+            throw new JsonParseException("Too many ingredients for shapeless recipe");
          } else {
             ItemStack itemstack = ShapedRecipe.itemStackFromJson(GsonHelper.getAsJsonObject(p_44291_, "result"));
             return new ShapelessNBTRecipe(p_44290_, s, itemstack, nonnulllist);

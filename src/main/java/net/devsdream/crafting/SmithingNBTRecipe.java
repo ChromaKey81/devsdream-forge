@@ -13,14 +13,13 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.devsdream.util.ChromaJsonHelper;
 
 import net.minecraft.commands.arguments.NbtPathArgument;
+import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.commands.arguments.NbtPathArgument.NbtPath;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.loot.function.CopyNbtLootFunction;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.RecipeSerializer;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.crafting.UpgradeRecipe;
@@ -40,16 +39,16 @@ public class SmithingNBTRecipe extends UpgradeRecipe {
     }
 
     @Override
-    public ItemStack craft(Inventory inventory) {
-        ItemStack out = super.craft(inventory).copy();
-        out.setNbt(this.getOutput().copy().getNbt());
+    public ItemStack assemble(Container inventory) {
+        ItemStack out = super.assemble(inventory).copy();
+        out.setTag(this.getResultItem().copy().getTag());
         this.getOverrides().forEach((path) -> {
-            ItemStack base = inventory.getStack(0).copy();
-            if (base.getNbt() != null) {
+            ItemStack base = inventory.getItem(0).copy();
+            if (base.getTag() != null) {
                 try {
-                    List<NbtElement> source = path.get(base.getNbt().copy());
+                    List<Tag> source = path.get(base.getTag().copy());
                     if (!source.isEmpty()) {
-                    CopyNbtFunction.Operator.REPLACE.merge(out.getOrCreateNbt(), path, source);
+                    CopyNbtFunction.MergeStrategy.REPLACE.merge(out.getOrCreateTag(), path, source);
                     }
                 } catch (CommandSyntaxException e) {
                 }
@@ -58,44 +57,44 @@ public class SmithingNBTRecipe extends UpgradeRecipe {
         return out;
     }
 
-    public static class Serializer implements RecipeSerializer<SmithingNBTRecipe> {
-        public SmithingNBTRecipe read(ResourceLocation identifier, JsonObject jsonObject) {
-           Ingredient ingredient = Ingredient.fromJson(GsonHelper.getObject(jsonObject, "base"));
-           Ingredient ingredient2 = Ingredient.fromJson(GsonHelper.getObject(jsonObject, "addition"));
-           JsonObject resultObj = GsonHelper.getObject(jsonObject, "result");
-           ItemStack itemStack = ShapedNBTRecipe.outputFromJson(resultObj);
+    public static class Serializer extends net.minecraftforge.registries.ForgeRegistryEntry<RecipeSerializer<?>> implements RecipeSerializer<SmithingNBTRecipe> {
+        public SmithingNBTRecipe fromJson(ResourceLocation id, JsonObject object) {
+           Ingredient ingredient = Ingredient.fromJson(GsonHelper.getAsJsonObject(object, "base"));
+           Ingredient ingredient1 = Ingredient.fromJson(GsonHelper.getAsJsonObject(object, "addition"));
+           JsonObject resultObj = GsonHelper.getAsJsonObject(object, "result");
+           ItemStack itemstack = ShapedNBTRecipe.itemStackFromJson(resultObj);
            List<NbtPath> overrides = new ArrayList<NbtPath>();
            ChromaJsonHelper.getArrayOrDefault(resultObj, "overrides", new JsonArray()).forEach((element) -> {
-               String override = GsonHelper.asString(element, "every override");
+               String override = GsonHelper.convertToString(element, "every override");
                try {
-                overrides.add(new NbtPathArgumentType().parse(new StringReader(override)));
+                overrides.add(new NbtPathArgument().parse(new StringReader(override)));
                } catch (CommandSyntaxException e) {
                    throw new JsonSyntaxException("Invalid NBT path: " + e.getMessage());
                }
            });
-           return new SmithingNBTRecipe(identifier, ingredient, ingredient2, itemStack, overrides);
+           return new SmithingNBTRecipe(id, ingredient, ingredient1, itemstack, overrides);
         }
   
-        public SmithingNBTRecipe read(ResourceLocation identifier, PacketByteBuf packetByteBuf) {
-           Ingredient ingredient = Ingredient.fromPacket(packetByteBuf);
-           Ingredient ingredient2 = Ingredient.fromPacket(packetByteBuf);
-           ItemStack itemStack = packetByteBuf.readItemStack();
-           List<NbtPath> overrides = packetByteBuf.readList((buffy) -> {
-               try {
-                   return new NbtPathArgumentType().parse(new StringReader(buffy.readString()));
-               } catch (CommandSyntaxException e) {
-                   throw new JsonSyntaxException("if you see this error, you've encountered a bug. please report it ASAP to the github repo at https://github.com/ChromaKey81/devsdream-fabric");
-               }
-           });
-           return new SmithingNBTRecipe(identifier, ingredient, ingredient2, itemStack, overrides);
+        public SmithingNBTRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buf) {
+           Ingredient ingredient = Ingredient.fromNetwork(buf);
+           Ingredient ingredient1 = Ingredient.fromNetwork(buf);
+           ItemStack itemstack = buf.readItem();
+           List<NbtPath> overrides = buf.readList((buffy) -> {
+                try {
+                    return new NbtPathArgument().parse(new StringReader(buffy.readUtf()));
+                } catch (CommandSyntaxException e) {
+                    throw new JsonSyntaxException("if you see this error, you've encountered a bug. please report it ASAP to the github repo at https://github.com/ChromaKey81/devsdream-fabric");
+                }
+            });
+           return new SmithingNBTRecipe(id, ingredient, ingredient1, itemstack, overrides);
         }
   
-        public void write(PacketByteBuf packetByteBuf, SmithingNBTRecipe smithingRecipe) {
-           smithingRecipe.getIngredients().get(0).write(packetByteBuf);
-           smithingRecipe.getIngredients().get(1).write(packetByteBuf);
-           packetByteBuf.writeItemStack(smithingRecipe.getOutput());
-           packetByteBuf.writeCollection(smithingRecipe.getOverrides(), (buffy, element) -> {
-               buffy.writeString(element.toString());
+        public void toNetwork(FriendlyByteBuf buf, SmithingNBTRecipe recipe) {
+           recipe.getIngredients().get(0).toNetwork(buf);
+           recipe.getIngredients().get(1).toNetwork(buf);
+           buf.writeItem(recipe.getResultItem());
+           buf.writeCollection(recipe.getOverrides(), (buffy, element) -> {
+               buffy.writeUtf(element.toString());
            });
         }
      }

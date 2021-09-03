@@ -3,56 +3,55 @@ package net.devsdream.crafting;
 import com.google.gson.JsonObject;
 
 import net.devsdream.util.ChromaJsonHelper;
-import net.minecraft.item.ItemConvertible;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.RecipeSerializer;
-import net.minecraft.recipe.StonecuttingRecipe;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.JsonHelper;
-import net.minecraft.util.registry.Registry;
+import net.minecraft.core.Registry;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.GsonHelper;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.StonecutterRecipe;
 
-public class StonecuttingNBTRecipe extends StonecuttingRecipe {
+public class StonecuttingNBTRecipe extends StonecutterRecipe {
     
-    public StonecuttingNBTRecipe(Identifier id, String group, Ingredient input, ItemStack output) {
+    public StonecuttingNBTRecipe(ResourceLocation id, String group, Ingredient input, ItemStack output) {
        super(id, group, input, output);
     }
 
     @Override
     public RecipeSerializer<?> getSerializer() {
       return Serializers.STONECUTTING_NBT;
-    } 
- 
-    public static class Serializer implements RecipeSerializer<StonecuttingNBTRecipe> {
+    }
 
-      public StonecuttingNBTRecipe read(Identifier identifier, JsonObject jsonObject) {
-         String string = JsonHelper.getString(jsonObject, "group", "");
-         Ingredient ingredient2;
-         if (JsonHelper.hasArray(jsonObject, "ingredient")) {
-            ingredient2 = Ingredient.fromJson(JsonHelper.getArray(jsonObject, "ingredient"));
+    public static class Serializer extends net.minecraftforge.registries.ForgeRegistryEntry<RecipeSerializer<?>> implements RecipeSerializer<StonecuttingNBTRecipe> {
+
+      public StonecuttingNBTRecipe fromJson(ResourceLocation id, JsonObject object) {
+         String s = ChromaJsonHelper.getAsString(object, "group", "");
+         Ingredient ingredient;
+         if (GsonHelper.isArrayNode(object, "ingredient")) {
+            ingredient = Ingredient.fromJson(GsonHelper.getAsJsonArray(object, "ingredient"));
          } else {
-            ingredient2 = Ingredient.fromJson(JsonHelper.getObject(jsonObject, "ingredient"));
+            ingredient = Ingredient.fromJson(GsonHelper.getAsJsonObject(object, "ingredient"));
          }
 
-         String string2 = JsonHelper.getString(jsonObject, "result");
-         int i = JsonHelper.getInt(jsonObject, "count");
-         ItemStack itemStack = new ItemStack((ItemConvertible)Registry.ITEM.get(new Identifier(string2)), i);
-         itemStack.setNbt(ChromaJsonHelper.getNbt(jsonObject, "nbt"));
-         return new StonecuttingNBTRecipe(identifier, string, ingredient2, itemStack);
+         String s1 = GsonHelper.getAsString(object, "result");
+         int i = GsonHelper.getAsInt(object, "count");
+         ItemStack itemstack = new ItemStack(Registry.ITEM.get(new ResourceLocation(s1)), i);
+         itemstack.setTag(ChromaJsonHelper.getNbt(object, "nbt"));
+         return new StonecuttingNBTRecipe(id, s, ingredient, itemstack);
       }
 
-      public StonecuttingNBTRecipe read(Identifier identifier, PacketByteBuf packetByteBuf) {
-         String string = packetByteBuf.readString();
-         Ingredient ingredient = Ingredient.fromPacket(packetByteBuf);
-         ItemStack itemStack = packetByteBuf.readItemStack();
-         return new StonecuttingNBTRecipe(identifier, string, ingredient, itemStack);
+      public StonecuttingNBTRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buffy) {
+         String s = buffy.readUtf();
+         Ingredient ingredient = Ingredient.fromNetwork(buffy);
+         ItemStack itemstack = buffy.readItem();
+         return new StonecuttingNBTRecipe(id, s, ingredient, itemstack);
       }
 
-      public void write(PacketByteBuf packetByteBuf, StonecuttingNBTRecipe cuttingRecipe) {
-         packetByteBuf.writeString(cuttingRecipe.group);
-         cuttingRecipe.input.write(packetByteBuf);
-         packetByteBuf.writeItemStack(cuttingRecipe.output);
+      public void toNetwork(FriendlyByteBuf buf, StonecuttingNBTRecipe recipe) {
+         buf.writeUtf(recipe.group);
+         recipe.ingredient.toNetwork(buf);
+         buf.writeItem(recipe.result);
       }
    }
  }

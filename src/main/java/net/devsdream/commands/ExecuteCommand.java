@@ -78,12 +78,15 @@ import net.minecraft.world.scores.Scoreboard;
 
 public class ExecuteCommand extends net.minecraft.server.commands.ExecuteCommand {
 
+   private static final SimpleCommandExceptionType NO_ITEM_EXCEPTION = new SimpleCommandExceptionType(
+                new TranslatableComponent("commands.devsdream.damageitem.failed.no_item"));
+
    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
       LiteralCommandNode<CommandSourceStack> literalcommandnode = dispatcher
             .register((LiteralArgumentBuilder) Commands.literal("dreamexecute").requires((source) -> {
                return source.hasPermission(2);
             }));
-      dispatcher.register(Commands.literal("execute").requires((source) -> {
+      dispatcher.register(Commands.literal("dreamexecute").requires((source) -> {
             return source.hasPermission(2);
          }).then(Commands.literal("run").redirect(dispatcher.getRoot())).then(addConditionals(literalcommandnode, Commands.literal("if"), true)).then(addConditionals(literalcommandnode, Commands.literal("unless"), false)).then(Commands.literal("as").then(Commands.argument("targets", EntityArgument.entities()).fork(literalcommandnode, (context) -> {
             List<CommandSourceStack> list = Lists.newArrayList();
@@ -290,17 +293,16 @@ public class ExecuteCommand extends net.minecraft.server.commands.ExecuteCommand
       return source.withCallback((context, successful, result) -> {
             try {
                   SlotAccess stackReference = target.getSlot(slot);
-                  if (stackReference != SlotAccess.NULL) {
-                  throw new SimpleCommandExceptionType(
-                        new TranslatableComponent("commands.devsdream.execute.store.player.item.failed.no_item")).create();
+                  if (stackReference == SlotAccess.NULL) {
+                     throw NO_ITEM_EXCEPTION.create();
                   } else {
                         ItemStack stack = stackReference.get();
-                        CompoundTag tag = stack.getTag();
+                        CompoundTag tag = stack.getOrCreateTag();
                         int i = storingResult ? result : (successful ? 1 : 0);
                         path.set(tag, () -> {
                               return tagConverter.apply(i);
                         });
-                        stack.setTag(stack.getTag().merge(tag));
+                        stack.setTag(stack.getOrCreateTag().merge(tag));
                         target.containerMenu.broadcastChanges();
                   }
             }
