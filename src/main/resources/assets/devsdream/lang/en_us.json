@@ -27,15 +27,16 @@
     "commands.devsdream.ignite.success.multiple": "Set %s entities on fire for %s seconds",
 
     "commands.devsdream.damageitem.failed": "Failed to damage the items of the target(s)",
+    "commands.devsdream.damageitem.failed.no_item": "Couldn't find an item in the target slot",
     "commands.devsdream.damageitem.success.single": "Damaged %s's %s by %s",
-    "commands.devsdream.damageitem.success.multiple": "Damaged the items of %s players by %s",
+    "commands.devsdream.damageitem.success.multiple": "Damaged the items of %s entities by %s",
 
     "commands.devsdream.freeze.failed": "Failed to freeze the target(s)",
     "commands.devsdream.freeze.success.single": "Froze %s for %s seconds",
     "commands.devsdream.freeze.success.multiple": "Froze %s entities for %s tick1s",
 
     "commands.devsdream.motion.failed": "Failed to modify the motion of the target(s)",
-    "commands.devsdream.motion.success.single": "Set %s's motion to %s",
+"commands.devsdream.motion.success.single": "Set %s's motion to %s",
     "commands.devsdream.motion.success.multiple": "Set %s entities' motion to %s",
 
     "commands.devsdream.rng.result": "Random number generated, value %s",
