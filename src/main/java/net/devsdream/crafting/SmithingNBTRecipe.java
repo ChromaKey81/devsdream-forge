@@ -41,7 +41,9 @@ public class SmithingNBTRecipe extends UpgradeRecipe {
     @Override
     public ItemStack assemble(Container inventory) {
         ItemStack out = super.assemble(inventory).copy();
-        out.setTag(this.getResultItem().copy().getTag());
+        if (this.getResultItem().getTag() != null) {
+           out.getOrCreateTag().merge(this.getResultItem().getTag().copy());
+        }
         this.getOverrides().forEach((path) -> {
             ItemStack base = inventory.getItem(0).copy();
             if (base.getTag() != null) {
